@@ -3,13 +3,13 @@
 require 'faraday'
 require 'json'
 
-class Maintainx::UpdateDuedateService
+class Maintainx::UpdateDuedateFromPriorityService
     API_BASE = "https://api.getmaintainx.com/v1"
     API_TOKEN = Rails.application.credentials.dig(:maintainx_api_token)
 
-
-  def initialize(work_order_id)
+  def initialize(work_order_id, priority)
     @work_order_id = work_order_id
+    @priority = priority
     @client = Faraday.new(url: API_BASE) do |conn|
       conn.request :json
       conn.response :json, content_type: /\bjson$/
@@ -19,11 +19,7 @@ class Maintainx::UpdateDuedateService
   end
 
   def call
-    work_order = get_work_order
-    return unless work_order
-
-    priority = work_order.dig('workOrder', 'priority')
-    new_due_date = calculate_new_due_date(priority)
+    new_due_date = calculate_new_due_date
     return unless new_due_date
 
     update_work_order_due_date(new_due_date)
@@ -31,16 +27,8 @@ class Maintainx::UpdateDuedateService
 
   private
 
-  def get_work_order
-    response = @client.get("workorders/#{@work_order_id}")
-    return response.body if response.success?
-
-    Rails.logger.error("Failed to fetch work order: #{response.status} - #{response.body}")
-    nil
-  end
-
-  def calculate_new_due_date(priority)
-    new_due_date = case priority&.downcase
+  def calculate_new_due_date
+    new_due_date = case @priority&.downcase
     when 'high'
       1.day.from_now
     when 'medium'

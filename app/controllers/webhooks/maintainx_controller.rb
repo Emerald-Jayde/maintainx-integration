@@ -8,9 +8,12 @@ module Webhooks
 
       # List of services to call when a work order is created in MaintainX
       # Here we can add more services if needed in the future
-      # For now, we only call the update due date service if priority is present
-      if work_order_id && event.dig("newWorkOrder", "priority").present?
-        Maintainx::UpdateDuedateService.new(work_order_id).call
+      # For now, we only call the update due date service
+      if work_order_id
+        Maintainx::UpdateDuedateFromPriorityService.new(
+          work_order_id,
+          event.dig("newWorkOrder", "priority"),
+        ).call
       end
 
       head :ok
@@ -21,9 +24,13 @@ module Webhooks
     def work_order_priority_changed
       event = JSON.parse(request.body.read)
       work_order_id = event.dig("workOrderId")
+      priority = event.dig("newWorkOrder", "priority")
 
-      if work_order_id && event.dig("newWorkOrder", "priority").present?
-        Maintainx::UpdateDuedateService.new(work_order_id).call
+      if work_order_id && priority
+        Maintainx::UpdateDuedateFromPriorityService.new(
+          work_order_id,
+          priority,
+        ).call
       end
 
       head :ok
